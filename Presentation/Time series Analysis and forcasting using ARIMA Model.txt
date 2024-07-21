@@ -1,0 +1,65 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.stattools import adfuller, acf, pacf
+from statsmodels.tsa.arima.model import ARIMA
+
+# Sample weather data (e.g., temperature)
+np.random.seed(0)
+date_rng = pd.date_range(start='1/1/2020', end='1/01/2022', freq='D')
+df = pd.DataFrame(date_rng, columns=['date'])
+df['data'] = np.random.normal(0, 1, size=(len(date_rng)))
+df.set_index('date', inplace=True)
+
+# Visualize the time series
+plt.figure(figsize=(10,6))
+plt.plot(df)
+plt.title('Time Series Data')
+plt.xlabel('Date')
+plt.ylabel('Value')
+plt.show()
+
+# Stationarize the series
+df['data_diff'] = df['data'] - df['data'].shift(1)
+df.dropna(inplace=True)
+
+# Plot differenced series
+plt.figure(figsize=(10,6))
+plt.plot(df['data_diff'])
+plt.title('Differenced Time Series Data')
+plt.xlabel('Date')
+plt.ylabel('Differenced Value')
+plt.show()
+
+# Plot ACF and PACF charts
+fig, ax = plt.subplots(1, 2, figsize=(16, 6))
+acf_values = acf(df['data_diff'], nlags=20)
+pacf_values = pacf(df['data_diff'], nlags=20)
+ax[0].stem(range(len(acf_values)), acf_values)
+ax[0].set_title('ACF Plot')
+ax[1].stem(range(len(pacf_values)), pacf_values)
+ax[1].set_title('PACF Plot')
+plt.show()
+
+# Build the ARIMA model
+model = ARIMA(df['data'], order=(1,1,1))
+model_fit = model.fit()
+
+# Make predictions
+forecast = model_fit.get_forecast(steps=30)
+forecast_index = pd.date_range(start='1/02/2022', periods=30, freq='D')
+forecast_df = pd.DataFrame({'forecast': forecast.predicted_mean}, index=forecast_index)
+
+# Plot the actual vs predicted values
+plt.figure(figsize=(10,6))
+plt.plot(df['data'], label='Actual Data')
+plt.plot(forecast_df, label='Forecasted Data', color='red')
+plt.fill_between(forecast_df.index, 
+                 forecast.conf_int().iloc[:, 0], 
+                 forecast.conf_int().iloc[:, 1], 
+                 color='pink', alpha=0.3)
+plt.title('Actual vs Forecasted Data')
+plt.xlabel('Date')
+plt.ylabel('Value')
+plt.legend()
+plt.show()
